@@ -9,6 +9,8 @@ Chimera is a Creature Trainer POC: train a creature through focused scenarios, r
 - Package boundaries: [docs/adr/0002-package-boundary-rules.md](docs/adr/0002-package-boundary-rules.md)
 - Linear project: Creature Trainer POC (Chimera)
 
+The ADR links are the intended permanent locations. They become valid after dependent ADR PR #3 / ELE-4 lands.
+
 ## Package Graph
 
 Runtime dependencies flow one way:
@@ -35,19 +37,24 @@ packages/app
 ## Four Invariants
 
 1. **sim-core is pure and deterministic.** Given the same seed, world config, and interventions, sim-core must produce the same snapshots and events. No wall-clock APIs, ambient randomness, DOM access, storage, network, or rendering.
-2. **Dependencies flow one way.** Higher layers may depend on lower layers through public exports. Lower layers must never import higher layers. Use dependency-cruiser and public `index.ts` exports to keep this true.
+2. **Dependencies flow one way.** Higher layers may depend on lower layers through public exports. Lower layers must never import higher layers. Until a dependency-cruiser guard lands, keep this true through public `index.ts` exports, review, tests, and package-boundary docs.
 3. **Renderer reads sim state and writes nothing back.** Renderer may consume snapshots/events and publish UI-level intents. It must not mutate sim state or reach into sim internals.
 4. **Events over coupling.** Cross-package communication should use typed contracts, snapshots, and events instead of direct imports between unrelated layers.
 
 ## Commands
 
+Current root commands:
+
 - Install: `pnpm install --frozen-lockfile`
-- Dev: `pnpm dev` (add when the app package owns a Vite entry)
 - Test: `pnpm test`
 - Lint: `pnpm lint`
 - Typecheck: `pnpm typecheck`
-- Build: `pnpm build` (add with the first buildable app slice)
-- Preview: `pnpm preview` (add with the first Vite app slice)
+
+Planned commands, unavailable until app/build slices land:
+
+- Dev: `pnpm dev`
+- Build: `pnpm build`
+- Preview: `pnpm preview`
 
 Run `pnpm typecheck`, `pnpm test`, and `pnpm lint` before closing an issue.
 
@@ -56,7 +63,7 @@ Run `pnpm typecheck`, `pnpm test`, and `pnpm lint` before closing an issue.
 Use conventional commits. Allowed scopes are:
 
 ```text
-sim-core, creature-ai, content, renderer, ui, app, infra, docs, tools, deps
+sim-core, creature-ai, content, renderer, ui, app, infra, docs, adr, tools, deps
 ```
 
 Examples:
@@ -65,7 +72,7 @@ Examples:
 - `docs(adr): record package boundary rules`
 - `ci(infra): run typecheck lint test build on pull requests`
 
-Local hooks and CI should reject vague messages such as `wip fix stuff`, invalid scopes, and PR titles that are not conventional commits.
+Once commit hygiene tooling lands, local hooks and CI should reject vague messages such as `wip fix stuff`, invalid scopes, and PR titles that are not conventional commits.
 
 ## Where To Make Changes
 
