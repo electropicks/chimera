@@ -31,13 +31,13 @@ The four invariants are:
 3. Renderer reads sim state and writes nothing back.
 4. Events are preferred over direct coupling.
 
-These rules are enforced through dependency-cruiser, public `index.ts` exports, package-specific AGENTS.md files, and tests around deterministic behavior and replay.
+Until boundary tooling lands, these rules are enforced through documented public `index.ts` exports, package-specific AGENTS.md files, review, and tests around deterministic behavior and replay. Adding dependency-cruiser or similar graph checks is planned follow-up work.
 
 ## Consequences
 
 Work should begin at the lowest stable contract and move upward. For example, a new sim event starts in `sim-core`, becomes a public typed export, is interpreted by `creature-ai` or `ui`, and is finally displayed by `renderer` or `app`. This can feel slower than importing directly, but it keeps replay and validation trustworthy.
 
-Dependency-cruiser is a build guard, not a design substitute. ADRs and AGENTS.md files explain the intent so humans and agents can choose the right layer before the guard fires.
+Future graph tooling will be a build guard, not a design substitute. ADRs and AGENTS.md files explain the intent so humans and agents can choose the right layer before tooling catches mistakes.
 
 ## Alternatives Considered
 
