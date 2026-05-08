@@ -1,6 +1,6 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join, relative } from "node:path";
-import { findForbiddenSimCoreApis } from "./check-sim-core-determinism.ts";
+import { findForbiddenSimCoreApis } from "./check-sim-core-determinism.mjs";
 
 const simCoreSourceRoot = join(process.cwd(), "packages", "sim-core", "src");
 

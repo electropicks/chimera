@@ -30,7 +30,12 @@ export function createRng(seed: number): Rng {
 
   const pick = <T>(items: readonly [T, ...T[]]): T => {
     const index = Math.floor(range(0, items.length));
-    return items[index] ?? items[0];
+
+    if (index < 0 || index >= items.length) {
+      throw new RangeError("selected index is outside the item list");
+    }
+
+    return items[index] as T;
   };
 
   const fork = (): Rng => createRng(nextUint32());

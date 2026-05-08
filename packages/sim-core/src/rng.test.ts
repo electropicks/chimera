@@ -41,6 +41,11 @@ describe("createRng", () => {
     expect(secondPicks).toEqual(firstPicks);
   });
 
+  test("preserves selected nullish items", () => {
+    expect(createRng(0).pick(["first", undefined, "third"] as const)).toBeUndefined();
+    expect(createRng(5).pick(["first", "second", null] as const)).toBeNull();
+  });
+
   test("forks deterministic child streams without sharing parent state", () => {
     const firstParent = createRng(123);
     const secondParent = createRng(123);
