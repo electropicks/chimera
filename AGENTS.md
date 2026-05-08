@@ -5,11 +5,9 @@ Chimera is a Creature Trainer POC: train a creature through focused scenarios, r
 ## Reference Docs
 
 - Project overview: [README.md](README.md)
-- Stack decision: [docs/adr/0001-stack-selection.md](docs/adr/0001-stack-selection.md)
-- Package boundaries: [docs/adr/0002-package-boundary-rules.md](docs/adr/0002-package-boundary-rules.md)
+- Stack decision: [docs/adr/0001-stack-selection.md](docs/adr/0001-stack-selection.md) (depends on ADR PR #3 / ELE-4)
+- Package boundaries: [docs/adr/0002-package-boundary-rules.md](docs/adr/0002-package-boundary-rules.md) (depends on ADR PR #3 / ELE-4)
 - Linear project: Creature Trainer POC (Chimera)
-
-The ADR links are the intended permanent locations. They become valid after dependent ADR PR #3 / ELE-4 lands.
 
 ## Package Graph
 
