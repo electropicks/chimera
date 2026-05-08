@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { findForbiddenSimCoreApis } from "./check-sim-core-determinism";
+import { findForbiddenSimCoreApis } from "./check-sim-core-determinism.mjs";
 
 describe("findForbiddenSimCoreApis", () => {
   test("reports ambient randomness and wall-clock APIs in sim-core sources", () => {
