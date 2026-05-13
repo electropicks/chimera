@@ -11,7 +11,8 @@ const packageInternalImportRules = packageNames.map((packageName) => ({
     pathNot: `^packages/${packageName}/`,
   },
   to: {
-    path: `^packages/${packageName}/src/(?!index\\.tsx?$).+\\.tsx?$`,
+    path: `^packages/${packageName}/src/.+`,
+    pathNot: `^packages/${packageName}/src/index(\\.|$)`,
   },
 }));
 
@@ -80,7 +81,8 @@ module.exports = {
       to: {
         path: "^packages/(app|ui|renderer|creature-ai|sim-core)/src/",
         // Dependency Cruiser 17.4 emits "type-only" for `import type` and
-        // "type-import" for `import("...").T` type queries.
+        // "type-import" for `import("...").T` type queries. Its DependencyType
+        // schema does not include a separate "type" label.
         dependencyTypesNot: ["type-only", "type-import"],
       },
     },
