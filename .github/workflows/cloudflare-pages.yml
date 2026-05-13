@@ -23,6 +23,8 @@ jobs:
   deploy:
     name: Deploy app to Cloudflare Pages
     runs-on: ubuntu-latest
+    env:
+      HAS_CLOUDFLARE_SECRETS: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -43,12 +45,12 @@ jobs:
         run: ${{ env.PAGES_BUILD_COMMAND }}
 
       - name: Allow workspace-root installs for wrangler action
-        if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+        if: ${{ env.HAS_CLOUDFLARE_SECRETS == 'true' }}
         run: pnpm config set ignore-workspace-root-check true
 
       - name: Deploy app bundle
         id: deploy
-        if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+        if: ${{ env.HAS_CLOUDFLARE_SECRETS == 'true' }}
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -59,7 +61,7 @@ jobs:
             --branch=${{ github.head_ref || github.ref_name }}
 
       - name: Comment preview URL on PR
-        if: ${{ github.event_name == 'pull_request' && secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+        if: ${{ github.event_name == 'pull_request' && env.HAS_CLOUDFLARE_SECRETS == 'true' }}
         uses: actions/github-script@v7
         env:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
