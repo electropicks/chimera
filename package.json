@@ -5,10 +5,11 @@
   "type": "module",
   "packageManager": "pnpm@10.33.4",
   "scripts": {
-    "typecheck": "tsc --noEmit --pretty false --allowImportingTsExtensions --allowJs --checkJs",
+    "typecheck": "tsc --noEmit --pretty false --allowImportingTsExtensions --allowJs --checkJs && pnpm -r typecheck",
     "test": "vitest run --passWithNoTests --configLoader runner",
     "lint": "biome check . && pnpm lint:sim-core-determinism",
-    "lint:sim-core-determinism": "node tools/check-sim-core-determinism-cli.mjs"
+    "lint:sim-core-determinism": "node tools/check-sim-core-determinism-cli.mjs",
+    "build": "pnpm -r build"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.14",
