@@ -68,8 +68,10 @@ jobs:
             git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}" > changed-files.txt
           elif [[ "${{ github.event.before }}" =~ ^0+$ ]]; then
             : > changed-files.txt
-          else
+          elif git cat-file -e "${{ github.event.before }}^{commit}" 2>/dev/null; then
             git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" > changed-files.txt
+          else
+            git diff --name-only "origin/${{ github.event.repository.default_branch }}" "${{ github.sha }}" > changed-files.txt
           fi
       - name: Select affected workspaces
         id: affected
