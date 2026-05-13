@@ -1,5 +1,7 @@
 const packageNames = ["app", "ui", "renderer", "creature-ai", "sim-core", "content"];
 
+// ADR 0002 applies public-entrypoint-only imports to every package, including
+// content; content purity is enforced separately by no-content-runtime-package-deps.
 const packageInternalImportRules = packageNames.map((packageName) => ({
   name: `no-${packageName}-internal-imports`,
   severity: "error",
@@ -77,6 +79,8 @@ module.exports = {
       },
       to: {
         path: "^packages/(app|ui|renderer|creature-ai|sim-core)/src/",
+        // Dependency Cruiser 17.4 emits "type-only" for `import type` and
+        // "type-import" for `import("...").T` type queries.
         dependencyTypesNot: ["type-only", "type-import"],
       },
     },
