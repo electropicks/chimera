@@ -27,6 +27,20 @@ export {
   type VitalComponent,
   type VitalInput,
 } from "./components.ts";
+export {
+  type Direction,
+  PERCEPTION_FEATURE_ORDER,
+  PERCEPTION_FEATURE_VERSION,
+  type PerceivedEntity,
+  type PerceivedEntityKind,
+  type PerceivedTarget,
+  type Perception,
+  type PerceptionFeatureName,
+  type PerceptionVitals,
+  perceive,
+  perceptionToFeatureVector,
+  type VitalReading,
+} from "./perception.ts";
 export { createRng, type Rng } from "./rng.ts";
 export {
   createSimulationMetadata,
