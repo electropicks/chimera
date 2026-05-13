@@ -20,3 +20,12 @@ export {
   type UtilityScores,
   type UtilityWeights,
 } from "./behavior.ts";
+export {
+  flee,
+  forage,
+  type LeafBehaviorOptions,
+  type LeafBehaviorResult,
+  rest,
+  runLeafBehavior,
+  wander,
+} from "./leaf-behaviors.ts";
