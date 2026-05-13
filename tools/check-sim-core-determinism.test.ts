@@ -22,4 +22,42 @@ describe("findForbiddenSimCoreApis", () => {
       },
     ]);
   });
+
+  test("reports bracket access and destructured aliases", () => {
+    const files = new Map([
+      [
+        "packages/sim-core/src/bypass.ts",
+        [
+          "const { random } = Math;",
+          "random();",
+          'Math["random"]();',
+          "const { now: currentTime } = Date;",
+          'Date["now"]();',
+        ].join("\n"),
+      ],
+    ]);
+
+    expect(findForbiddenSimCoreApis(files)).toEqual([
+      {
+        api: "Math.random",
+        filePath: "packages/sim-core/src/bypass.ts",
+        line: 1,
+      },
+      {
+        api: "Math.random",
+        filePath: "packages/sim-core/src/bypass.ts",
+        line: 3,
+      },
+      {
+        api: "Date.now",
+        filePath: "packages/sim-core/src/bypass.ts",
+        line: 4,
+      },
+      {
+        api: "Date.now",
+        filePath: "packages/sim-core/src/bypass.ts",
+        line: 5,
+      },
+    ]);
+  });
 });
