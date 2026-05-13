@@ -13,6 +13,7 @@ const rootFallbackFiles = new Set([
 ]);
 
 const rootFallbackPrefixes = [".github/", "tools/ci/", "tools/check-"];
+const rootFallbackTestTargets = ["tools/ci", "tools/check-sim-core-determinism.test.ts"];
 
 const runtimeDependencyChain = [
   "packages/sim-core",
@@ -111,7 +112,7 @@ export const selectAffectedWorkspaces = (changedFiles, workspaceDirs = listWorks
 
   if (runAll) {
     return {
-      affectedDirs: workspaceDirs,
+      affectedDirs: [...workspaceDirs, ...rootFallbackTestTargets],
       mode: "all",
     };
   }
