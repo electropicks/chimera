@@ -11,7 +11,7 @@ const packageInternalImportRules = packageNames.map((packageName) => ({
     pathNot: `^packages/${packageName}/`,
   },
   to: {
-    path: `^packages/${packageName}/src/(?!index\\.ts$).+\\.ts$`,
+    path: `^packages/${packageName}/src/(?!index\\.tsx?$).+\\.tsx?$`,
   },
 }));
 
