@@ -8,6 +8,12 @@ import {
   type World,
 } from "bitecs";
 
+import {
+  createSimulationMetadata,
+  type SimulationMetadata,
+  type SimulationWorldOptions,
+} from "./tick.ts";
+
 export interface PositionComponent {
   x: number[];
   y: number[];
@@ -42,7 +48,7 @@ export interface CoreComponents {
   Energy: DecayingVitalComponent;
 }
 
-export type SimulationWorld = World<{ components: CoreComponents }>;
+export type SimulationWorld = World<{ components: CoreComponents; sim: SimulationMetadata }>;
 
 export function createCoreComponents(): CoreComponents {
   return {
@@ -185,9 +191,12 @@ const DEFAULT_FOOD_ENERGY: DecayingVitalInput = {
   decay_rate: 0,
 };
 
-export function createSimulationWorld(): SimulationWorld {
+export function createSimulationWorld(options: SimulationWorldOptions = {}): SimulationWorld {
   const components = createCoreComponents();
-  const world = createWorld<{ components: CoreComponents }>({ components });
+  const world = createWorld<{ components: CoreComponents; sim: SimulationMetadata }>({
+    components,
+    sim: createSimulationMetadata(options),
+  });
   registerComponents(world, getCoreComponentList(components));
   return world;
 }
