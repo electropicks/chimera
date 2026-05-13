@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit --pretty false --allowImportingTsExtensions -p tsconfig.json"
   },
   "dependencies": {
+    "@creature/creature-ai": "workspace:*",
     "@creature/sim-core": "workspace:*",
     "pixi.js": "^8.18.1"
   },
