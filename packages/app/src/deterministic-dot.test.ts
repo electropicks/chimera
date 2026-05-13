@@ -26,4 +26,16 @@ describe("createDeterministicDotSimulation", () => {
     expect(pixels.every((pixel) => pixel.x >= 8 && pixel.x <= bounds.width - 8)).toBe(true);
     expect(pixels.every((pixel) => pixel.y >= 8 && pixel.y <= bounds.height - 8)).toBe(true);
   });
+
+  test("keeps the dot inside updated bounds after resize", () => {
+    const simulation = createDeterministicDotSimulation({
+      seed: 7,
+      bounds: { width: 1_280, height: 720 },
+    });
+    const resizedBounds = { width: 320, height: 180 } as const;
+    const pixels = Array.from({ length: 1_000 }, () => simulation.step(resizedBounds).pixel);
+
+    expect(pixels.every((pixel) => pixel.x >= 8 && pixel.x <= resizedBounds.width - 8)).toBe(true);
+    expect(pixels.every((pixel) => pixel.y >= 8 && pixel.y <= resizedBounds.height - 8)).toBe(true);
+  });
 });

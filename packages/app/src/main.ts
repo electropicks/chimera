@@ -41,7 +41,7 @@ async function bootstrap(): Promise<void> {
 
   app.ticker.maxFPS = 60;
   app.ticker.add(() => {
-    renderDot(dot, simulation.step().pixel);
+    renderDot(dot, simulation.step(currentBounds(app)).pixel);
   });
 }
 

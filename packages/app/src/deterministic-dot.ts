@@ -65,9 +65,13 @@ export function createDeterministicDotSimulation({
     pixel: toPixelPosition(entity.position),
   });
 
-  const step = (): DotSnapshot => {
+  const step = (nextBounds?: DotBounds): DotSnapshot => {
     frame += 1;
-    entity = moveDot(entity, spawnBounds, FIXED_TIMESTEP_SECONDS);
+    entity = moveDot(
+      entity,
+      nextBounds ? clampBounds(nextBounds) : spawnBounds,
+      FIXED_TIMESTEP_SECONDS,
+    );
 
     return snapshot();
   };
@@ -80,7 +84,7 @@ export function createDeterministicDotSimulation({
 
 export interface DotSimulation {
   snapshot(): DotSnapshot;
-  step(): DotSnapshot;
+  step(bounds?: DotBounds): DotSnapshot;
 }
 
 export function collectDotPixels(
@@ -123,15 +127,23 @@ function moveDot(entity: DotEntity, bounds: DotBounds, deltaSeconds: number): Do
 }
 
 function reflectInsideBounds(value: number, min: number, max: number): number {
-  if (value < min) {
-    return min + (min - value);
+  if (max <= min) {
+    return min;
   }
 
-  if (value > max) {
-    return max - (value - max);
+  let reflected = value;
+
+  while (reflected < min || reflected > max) {
+    if (reflected < min) {
+      reflected = min + (min - reflected);
+    }
+
+    if (reflected > max) {
+      reflected = max - (reflected - max);
+    }
   }
 
-  return value;
+  return reflected;
 }
 
 function clampBounds(bounds: DotBounds): DotBounds {
