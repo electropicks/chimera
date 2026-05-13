@@ -28,3 +28,17 @@ export {
   type VitalInput,
 } from "./components.ts";
 export { createRng, type Rng } from "./rng.ts";
+export {
+  createSimulationMetadata,
+  type EntitySnapshot,
+  type Intervention,
+  type SimEvent,
+  type SimulationMetadata,
+  type SimulationWorldOptions,
+  SYSTEM_ORDER,
+  type SystemName,
+  snapshotWorld,
+  step,
+  type WorldBounds,
+  type WorldSnapshot,
+} from "./tick.ts";
