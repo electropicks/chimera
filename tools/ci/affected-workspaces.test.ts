@@ -20,10 +20,19 @@ const workspaceDirs = [
   "tools/replay-viewer",
 ];
 
+const rootFallbackTestTargets = ["tools/ci", "tools/check-sim-core-determinism.test.ts"];
+
 describe("selectAffectedWorkspaces", () => {
   test("runs all workspace tests for root fallback files", () => {
     expect(selectAffectedWorkspaces(["pnpm-lock.yaml"], workspaceDirs)).toEqual({
-      affectedDirs: workspaceDirs,
+      affectedDirs: [...workspaceDirs, ...rootFallbackTestTargets],
+      mode: "all",
+    });
+  });
+
+  test("includes root tool tests for tool fallback files", () => {
+    expect(selectAffectedWorkspaces(["tools/ci/affected-workspaces.mjs"], workspaceDirs)).toEqual({
+      affectedDirs: [...workspaceDirs, ...rootFallbackTestTargets],
       mode: "all",
     });
   });
