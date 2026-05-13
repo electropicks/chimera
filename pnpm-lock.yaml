@@ -60,7 +60,11 @@ importers:
 
   packages/ui: {}
 
-  tools/headless-sim: {}
+  tools/headless-sim:
+    dependencies:
+      '@creature/sim-core':
+        specifier: workspace:*
+        version: link:../../packages/sim-core
 
   tools/replay-viewer: {}
 

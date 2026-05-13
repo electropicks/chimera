@@ -9,6 +9,7 @@
   },
   "scripts": {
     "prepare": "node tools/install-hooks.mjs",
+    "sim": "node --experimental-strip-types tools/headless-sim/src/index.ts",
     "typecheck": "tsc --noEmit --pretty false --allowImportingTsExtensions --allowJs --checkJs",
     "test": "vitest run --passWithNoTests --configLoader runner",
     "lint": "biome check . && pnpm lint:sim-core-determinism && pnpm lint:deps",
