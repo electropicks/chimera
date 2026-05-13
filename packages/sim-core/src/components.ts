@@ -33,40 +33,72 @@ export interface DecayingVitalComponent extends VitalComponent {
   decay_rate: number[];
 }
 
-export const Position: PositionComponent = {
-  x: [],
-  y: [],
-};
+export interface CoreComponents {
+  Position: PositionComponent;
+  Velocity: VelocityComponent;
+  Body: BodyComponent;
+  Health: VitalComponent;
+  Hunger: DecayingVitalComponent;
+  Energy: DecayingVitalComponent;
+}
 
-export const Velocity: VelocityComponent = {
-  vx: [],
-  vy: [],
-};
+export type SimulationWorld = World<{ components: CoreComponents }>;
 
-export const Body: BodyComponent = {
-  speed: [],
-  size: [],
-  sense_radius: [],
-};
+export function createCoreComponents(): CoreComponents {
+  return {
+    Position: {
+      x: [],
+      y: [],
+    },
+    Velocity: {
+      vx: [],
+      vy: [],
+    },
+    Body: {
+      speed: [],
+      size: [],
+      sense_radius: [],
+    },
+    Health: {
+      current: [],
+      max: [],
+    },
+    Hunger: {
+      current: [],
+      max: [],
+      decay_rate: [],
+    },
+    Energy: {
+      current: [],
+      max: [],
+      decay_rate: [],
+    },
+  };
+}
 
-export const Health: VitalComponent = {
-  current: [],
-  max: [],
-};
+export function getCoreComponents(world: SimulationWorld): CoreComponents {
+  return world.components;
+}
 
-export const Hunger: DecayingVitalComponent = {
-  current: [],
-  max: [],
-  decay_rate: [],
-};
-
-export const Energy: DecayingVitalComponent = {
-  current: [],
-  max: [],
-  decay_rate: [],
-};
-
-export const coreComponents = [Position, Velocity, Body, Health, Hunger, Energy] as const;
+export function getCoreComponentList(
+  components: CoreComponents,
+): [
+  PositionComponent,
+  VelocityComponent,
+  BodyComponent,
+  VitalComponent,
+  DecayingVitalComponent,
+  DecayingVitalComponent,
+] {
+  return [
+    components.Position,
+    components.Velocity,
+    components.Body,
+    components.Health,
+    components.Hunger,
+    components.Energy,
+  ];
+}
 
 export interface PositionInput {
   x: number;
@@ -153,64 +185,67 @@ const DEFAULT_FOOD_ENERGY: DecayingVitalInput = {
   decay_rate: 0,
 };
 
-export function createSimulationWorld(): World {
-  const world = createWorld();
-  registerComponents(world, [...coreComponents]);
+export function createSimulationWorld(): SimulationWorld {
+  const components = createCoreComponents();
+  const world = createWorld<{ components: CoreComponents }>({ components });
+  registerComponents(world, getCoreComponentList(components));
   return world;
 }
 
-export function createCreature(world: World, options: CreatureOptions = {}): EntityId {
+export function createCreature(world: SimulationWorld, options: CreatureOptions = {}): EntityId {
+  const components = getCoreComponents(world);
   const eid = addEntity(world);
 
-  addComponent(world, eid, Position);
-  addComponent(world, eid, Velocity);
-  addComponent(world, eid, Body);
-  addComponent(world, eid, Health);
-  addComponent(world, eid, Hunger);
-  addComponent(world, eid, Energy);
+  addComponent(world, eid, components.Position);
+  addComponent(world, eid, components.Velocity);
+  addComponent(world, eid, components.Body);
+  addComponent(world, eid, components.Health);
+  addComponent(world, eid, components.Hunger);
+  addComponent(world, eid, components.Energy);
 
-  writePosition(eid, { ...DEFAULT_POSITION, ...options.position });
-  writeVelocity(eid, { ...DEFAULT_VELOCITY, ...options.velocity });
-  writeBody(eid, { ...DEFAULT_CREATURE_BODY, ...options.body });
-  writeVital(Health, eid, { ...DEFAULT_HEALTH, ...options.health });
-  writeDecayingVital(Hunger, eid, { ...DEFAULT_HUNGER, ...options.hunger });
-  writeDecayingVital(Energy, eid, { ...DEFAULT_CREATURE_ENERGY, ...options.energy });
+  writePosition(components.Position, eid, { ...DEFAULT_POSITION, ...options.position });
+  writeVelocity(components.Velocity, eid, { ...DEFAULT_VELOCITY, ...options.velocity });
+  writeBody(components.Body, eid, { ...DEFAULT_CREATURE_BODY, ...options.body });
+  writeVital(components.Health, eid, { ...DEFAULT_HEALTH, ...options.health });
+  writeDecayingVital(components.Hunger, eid, { ...DEFAULT_HUNGER, ...options.hunger });
+  writeDecayingVital(components.Energy, eid, { ...DEFAULT_CREATURE_ENERGY, ...options.energy });
 
   return eid;
 }
 
-export function createFood(world: World, options: FoodOptions = {}): EntityId {
+export function createFood(world: SimulationWorld, options: FoodOptions = {}): EntityId {
+  const components = getCoreComponents(world);
   const eid = addEntity(world);
 
-  addComponent(world, eid, Position);
-  addComponent(world, eid, Body);
-  addComponent(world, eid, Energy);
+  addComponent(world, eid, components.Position);
+  addComponent(world, eid, components.Body);
+  addComponent(world, eid, components.Energy);
 
-  writePosition(eid, { ...DEFAULT_POSITION, ...options.position });
-  writeBody(eid, { ...DEFAULT_FOOD_BODY, ...options.body });
-  writeDecayingVital(Energy, eid, { ...DEFAULT_FOOD_ENERGY, ...options.energy });
+  writePosition(components.Position, eid, { ...DEFAULT_POSITION, ...options.position });
+  writeBody(components.Body, eid, { ...DEFAULT_FOOD_BODY, ...options.body });
+  writeDecayingVital(components.Energy, eid, { ...DEFAULT_FOOD_ENERGY, ...options.energy });
 
   return eid;
 }
 
-export function destroyEntity(world: World, eid: EntityId): void {
+export function destroyEntity(world: SimulationWorld, eid: EntityId): void {
   removeEntity(world, eid);
 }
 
-function writePosition(eid: EntityId, position: PositionInput): void {
-  Position.x[eid] = position.x;
-  Position.y[eid] = position.y;
+function writePosition(component: PositionComponent, eid: EntityId, position: PositionInput): void {
+  component.x[eid] = position.x;
+  component.y[eid] = position.y;
 }
 
-function writeVelocity(eid: EntityId, velocity: VelocityInput): void {
-  Velocity.vx[eid] = velocity.vx;
-  Velocity.vy[eid] = velocity.vy;
+function writeVelocity(component: VelocityComponent, eid: EntityId, velocity: VelocityInput): void {
+  component.vx[eid] = velocity.vx;
+  component.vy[eid] = velocity.vy;
 }
 
-function writeBody(eid: EntityId, body: BodyInput): void {
-  Body.speed[eid] = body.speed;
-  Body.size[eid] = body.size;
-  Body.sense_radius[eid] = body.sense_radius;
+function writeBody(component: BodyComponent, eid: EntityId, body: BodyInput): void {
+  component.speed[eid] = body.speed;
+  component.size[eid] = body.size;
+  component.sense_radius[eid] = body.sense_radius;
 }
 
 function writeVital(component: VitalComponent, eid: EntityId, vital: VitalInput): void {

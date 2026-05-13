@@ -1,6 +1,6 @@
 # Core simulation components
 
-`@creature/sim-core` stores simulation state in bitECS component tables. Component fields are numeric arrays indexed by bitECS entity id (`eid`). Unless otherwise noted, distance units are world units and rates are measured per simulation second; future deterministic tick systems will convert those rates through the fixed tick delta.
+`@creature/sim-core` stores simulation state in bitECS component tables. Component fields are numeric arrays indexed by bitECS entity id (`eid`). Each simulation world owns its own component stores; use `getCoreComponents(world)` to read or write `Position`, `Velocity`, `Body`, `Health`, `Hunger`, and `Energy` for that world. Unless otherwise noted, distance units are world units and rates are measured per simulation second; future deterministic tick systems will convert those rates through the fixed tick delta.
 
 ## Position
 
@@ -64,3 +64,4 @@ Available stamina or nutrition. Creatures consume it over time; food uses it as 
 - `createCreature` adds `Position`, `Velocity`, `Body`, `Health`, `Hunger`, and `Energy`.
 - `createFood` adds `Position`, `Body`, and `Energy`.
 - `destroyEntity` removes an entity from its bitECS world.
+- `createSimulationWorld` creates a fresh component store set so parallel worlds can safely reuse bitECS entity ids.
