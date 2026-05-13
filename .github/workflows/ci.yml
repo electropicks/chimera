@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  typecheck:
+    name: typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run TypeScript typecheck
+        run: pnpm typecheck
+
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run Biome and determinism lint
+        run: pnpm lint
+
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Collect changed files
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}" > changed-files.txt
+          elif [[ "${{ github.event.before }}" =~ ^0+$ ]]; then
+            : > changed-files.txt
+          else
+            git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" > changed-files.txt
+          fi
+      - name: Select affected workspaces
+        id: affected
+        run: node tools/ci/affected-workspaces.mjs changed-files.txt
+      - name: Run affected Vitest suites
+        if: steps.affected.outputs.mode != 'none'
+        run: pnpm vitest run --passWithNoTests --configLoader runner ${{ steps.affected.outputs.dirs }}
+      - name: Skip tests when no workspace changed
+        if: steps.affected.outputs.mode == 'none'
+        run: echo "No workspace changes detected; skipping Vitest."
+
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build all packages
+        run: pnpm build
