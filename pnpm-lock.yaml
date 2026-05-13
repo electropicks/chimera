@@ -48,7 +48,11 @@ importers:
 
   packages/content: {}
 
-  packages/creature-ai: {}
+  packages/creature-ai:
+    dependencies:
+      '@creature/sim-core':
+        specifier: workspace:*
+        version: link:../sim-core
 
   packages/renderer: {}
 
