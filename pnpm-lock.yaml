@@ -35,6 +35,9 @@ importers:
 
   packages/app:
     dependencies:
+      '@creature/creature-ai':
+        specifier: workspace:*
+        version: link:../creature-ai
       '@creature/sim-core':
         specifier: workspace:*
         version: link:../sim-core
