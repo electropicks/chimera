@@ -2,21 +2,17 @@ import { entityExists, hasComponent } from "bitecs";
 import { describe, expect, test } from "vitest";
 
 import {
-  Body,
   createCreature,
   createFood,
   createSimulationWorld,
   destroyEntity,
-  Energy,
-  Health,
-  Hunger,
-  Position,
-  Velocity,
+  getCoreComponents,
 } from "./index";
 
 describe("core components", () => {
   test("creates a creature with all creature components and initial values", () => {
     const world = createSimulationWorld();
+    const { Body, Energy, Health, Hunger, Position, Velocity } = getCoreComponents(world);
 
     const creature = createCreature(world, {
       position: { x: 2, y: 3 },
@@ -54,6 +50,7 @@ describe("core components", () => {
 
   test("creates food with position, body, and energy only", () => {
     const world = createSimulationWorld();
+    const { Body, Energy, Health, Hunger, Position, Velocity } = getCoreComponents(world);
 
     const food = createFood(world, {
       position: { x: -3, y: 7 },
@@ -75,6 +72,7 @@ describe("core components", () => {
 
   test("allows component data to be read and written by entity id", () => {
     const world = createSimulationWorld();
+    const { Hunger, Position, Velocity } = getCoreComponents(world);
     const creature = createCreature(world);
 
     Position.x[creature] = 42;
@@ -93,5 +91,31 @@ describe("core components", () => {
     destroyEntity(world, creature);
 
     expect(entityExists(world, creature)).toBe(false);
+  });
+
+  test("isolates component data for entities in separate simulation worlds", () => {
+    const firstWorld = createSimulationWorld();
+    const firstComponents = getCoreComponents(firstWorld);
+    const firstCreature = createCreature(firstWorld, {
+      position: { x: 2, y: 3 },
+      health: { current: 80, max: 120 },
+    });
+
+    const secondWorld = createSimulationWorld();
+    const secondComponents = getCoreComponents(secondWorld);
+    const secondCreature = createCreature(secondWorld, {
+      position: { x: -4, y: 9 },
+      health: { current: 55, max: 90 },
+    });
+
+    expect(firstCreature).toBe(secondCreature);
+    expect(firstComponents.Position.x[firstCreature]).toBe(2);
+    expect(firstComponents.Position.y[firstCreature]).toBe(3);
+    expect(firstComponents.Health.current[firstCreature]).toBe(80);
+    expect(firstComponents.Health.max[firstCreature]).toBe(120);
+    expect(secondComponents.Position.x[secondCreature]).toBe(-4);
+    expect(secondComponents.Position.y[secondCreature]).toBe(9);
+    expect(secondComponents.Health.current[secondCreature]).toBe(55);
+    expect(secondComponents.Health.max[secondCreature]).toBe(90);
   });
 });
