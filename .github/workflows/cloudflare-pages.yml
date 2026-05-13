@@ -1,0 +1,75 @@
+name: Cloudflare Pages
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: cloudflare-pages-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CLOUDFLARE_PROJECT_NAME: chimera
+  PAGES_BUILD_COMMAND: pnpm --filter @creature/app build
+  PAGES_OUTPUT_DIRECTORY: packages/app/dist
+
+jobs:
+  deploy:
+    name: Deploy app to Cloudflare Pages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.12.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build app package
+        run: ${{ env.PAGES_BUILD_COMMAND }}
+
+      - name: Deploy app bundle
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: >-
+            pages deploy ${{ env.PAGES_OUTPUT_DIRECTORY }}
+            --project-name=${{ env.CLOUDFLARE_PROJECT_NAME }}
+            --branch=${{ github.head_ref || github.ref_name }}
+
+      - name: Comment preview URL on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+        with:
+          script: |
+            const marker = "<!-- chimera-cloudflare-pages-preview -->";
+            const deploymentUrl = process.env.DEPLOYMENT_URL;
+            const body = `${marker}\n## Cloudflare Pages preview\n\n${deploymentUrl ? `Preview URL: ${deploymentUrl}` : "Preview deployment completed, but Wrangler did not return a deployment URL."}\n\nProject: \`${process.env.CLOUDFLARE_PROJECT_NAME}\``;
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const { data: comments } = await github.rest.issues.listComments({ owner, repo, issue_number, per_page: 100 });
+            const existing = comments.find((comment) => comment.body?.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
