@@ -96,6 +96,98 @@
       .hud-bar-fill.energy {
         background: #5eead4;
       }
+
+      .time-controls {
+        position: absolute;
+        right: 16px;
+        bottom: 16px;
+        display: grid;
+        gap: 10px;
+        width: min(300px, calc(100% - 32px));
+        box-sizing: border-box;
+        padding: 12px;
+        border: 1px solid rgba(125, 211, 252, 0.32);
+        border-radius: 8px;
+        background: rgba(12, 22, 17, 0.86);
+        box-shadow: 0 14px 42px rgba(0, 0, 0, 0.28);
+        backdrop-filter: blur(10px);
+      }
+
+      .time-controls-status {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+      }
+
+      .time-controls-label,
+      .story-log-empty {
+        color: rgba(248, 250, 243, 0.68);
+        font-size: 12px;
+        line-height: 1.4;
+      }
+
+      .time-controls-current {
+        color: #f8faf3;
+        font-size: 13px;
+        font-weight: 650;
+        line-height: 1.4;
+      }
+
+      .time-controls-buttons {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 6px;
+      }
+
+      .time-control-button {
+        min-height: 34px;
+        border: 1px solid rgba(248, 250, 243, 0.24);
+        border-radius: 6px;
+        background: rgba(248, 250, 243, 0.08);
+        color: #f8faf3;
+        font: inherit;
+        font-size: 12px;
+        font-weight: 650;
+      }
+
+      .time-control-button[aria-pressed="true"] {
+        border-color: #7dd3fc;
+        background: rgba(125, 211, 252, 0.2);
+      }
+
+      .story-log {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        width: min(300px, calc(100% - 32px));
+        box-sizing: border-box;
+        padding: 12px;
+        border: 1px solid rgba(244, 211, 94, 0.32);
+        border-radius: 8px;
+        background: rgba(12, 22, 17, 0.78);
+        box-shadow: 0 14px 42px rgba(0, 0, 0, 0.24);
+        backdrop-filter: blur(10px);
+      }
+
+      .story-log-title {
+        margin: 0 0 8px;
+        color: #f8faf3;
+        font-size: 13px;
+        line-height: 1.4;
+      }
+
+      .story-log-entries {
+        display: grid;
+        gap: 8px;
+        min-height: 32px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .story-log-empty {
+        margin: 0;
+      }
     </style>
   </head>
   <body>

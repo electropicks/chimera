@@ -15,6 +15,7 @@
   "dependencies": {
     "@creature/creature-ai": "workspace:*",
     "@creature/sim-core": "workspace:*",
+    "@creature/ui": "workspace:*",
     "pixi.js": "^8.18.1"
   },
   "devDependencies": {
