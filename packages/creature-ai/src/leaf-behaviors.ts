@@ -4,6 +4,7 @@ import {
   createSimulationWorld,
   destroyEntity,
   type EntityId,
+  type EntitySnapshot,
   getCoreComponents,
   type Intervention,
   type Perception,
@@ -108,9 +109,10 @@ export function runLeafBehavior(
   world: SimulationWorld,
   entity: EntityId,
   action: CreatureAction,
+  options: LeafBehaviorOptions = {},
 ): LeafBehaviorResult {
   if (action === "forage") {
-    return forage(world, entity);
+    return forage(world, entity, options);
   }
 
   if (action === "rest") {
@@ -121,7 +123,7 @@ export function runLeafBehavior(
     return wander(world, entity);
   }
 
-  return flee(world, entity);
+  return flee(world, entity, options);
 }
 
 function advance(
@@ -149,47 +151,65 @@ function cloneWorld(source: SimulationWorld): CloneResult {
     seed: snapshot.seed,
   });
   const entityMap = new Map<EntityId, EntityId>();
+  const placeholderEntities: EntityId[] = [];
+  let nextEntityId = 1;
 
   world.sim.tick = snapshot.tick;
   world.sim.events = snapshot.events.map((event) => ({ ...event }));
   world.sim.lastSystemOrder = [...snapshot.lastSystemOrder];
 
   for (const entity of snapshot.entities) {
-    if (
-      entity.position &&
-      entity.velocity &&
-      entity.body &&
-      entity.health &&
-      entity.hunger &&
-      entity.energy
-    ) {
-      entityMap.set(
-        entity.id,
-        createCreature(world, {
-          body: entity.body,
-          energy: entity.energy,
-          health: entity.health,
-          hunger: entity.hunger,
-          position: entity.position,
-          velocity: entity.velocity,
-        }),
-      );
-      continue;
+    while (nextEntityId < entity.id) {
+      const placeholder = createCreature(world);
+      placeholderEntities.push(placeholder);
+      nextEntityId = placeholder + 1;
     }
 
-    if (entity.position && entity.body && entity.energy) {
-      entityMap.set(
-        entity.id,
-        createFood(world, {
-          body: entity.body,
-          energy: entity.energy,
-          position: entity.position,
-        }),
-      );
+    const cloneEntity = cloneEntityFromSnapshot(world, entity);
+
+    if (cloneEntity !== entity.id) {
+      throw new Error(`expected clone entity ${cloneEntity} to preserve source id ${entity.id}`);
     }
+
+    entityMap.set(entity.id, cloneEntity);
+    nextEntityId = cloneEntity + 1;
+  }
+
+  for (const placeholder of placeholderEntities) {
+    destroyEntity(world, placeholder);
   }
 
   return { entityMap, world };
+}
+
+function cloneEntityFromSnapshot(world: SimulationWorld, entity: EntitySnapshot): EntityId {
+  if (
+    entity.position &&
+    entity.velocity &&
+    entity.body &&
+    entity.health &&
+    entity.hunger &&
+    entity.energy
+  ) {
+    return createCreature(world, {
+      body: entity.body,
+      energy: entity.energy,
+      health: entity.health,
+      hunger: entity.hunger,
+      position: entity.position,
+      velocity: entity.velocity,
+    });
+  }
+
+  if (entity.position && entity.body && entity.energy) {
+    return createFood(world, {
+      body: entity.body,
+      energy: entity.energy,
+      position: entity.position,
+    });
+  }
+
+  throw new Error(`entity ${entity.id} has no supported clone archetype`);
 }
 
 function requireMappedEntity(clone: CloneResult, entity: EntityId): EntityId {
