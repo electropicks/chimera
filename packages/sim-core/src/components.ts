@@ -3,6 +3,7 @@ import {
   addEntity,
   createWorld,
   type EntityId,
+  hasComponent,
   registerComponents,
   removeEntity,
   type World,
@@ -39,6 +40,12 @@ export interface DecayingVitalComponent extends VitalComponent {
   decay_rate: number[];
 }
 
+export interface ResourceComponent extends VitalComponent {
+  nutrition: number[];
+  regrow_ticks: number[];
+  regrow_remaining: number[];
+}
+
 export interface CoreComponents {
   Position: PositionComponent;
   Velocity: VelocityComponent;
@@ -46,6 +53,7 @@ export interface CoreComponents {
   Health: VitalComponent;
   Hunger: DecayingVitalComponent;
   Energy: DecayingVitalComponent;
+  Resource: ResourceComponent;
 }
 
 export type SimulationWorld = World<{ components: CoreComponents; sim: SimulationMetadata }>;
@@ -79,6 +87,13 @@ export function createCoreComponents(): CoreComponents {
       max: [],
       decay_rate: [],
     },
+    Resource: {
+      current: [],
+      max: [],
+      nutrition: [],
+      regrow_ticks: [],
+      regrow_remaining: [],
+    },
   };
 }
 
@@ -95,6 +110,7 @@ export function getCoreComponentList(
   VitalComponent,
   DecayingVitalComponent,
   DecayingVitalComponent,
+  ResourceComponent,
 ] {
   return [
     components.Position,
@@ -103,6 +119,7 @@ export function getCoreComponentList(
     components.Health,
     components.Hunger,
     components.Energy,
+    components.Resource,
   ];
 }
 
@@ -131,6 +148,22 @@ export interface DecayingVitalInput extends VitalInput {
   decay_rate: number;
 }
 
+export interface ResourceInput extends VitalInput {
+  nutrition: number;
+  regrow_ticks: number;
+  regrow_remaining: number;
+}
+
+export interface ConsumeResourceOptions {
+  consumer: EntityId;
+  resource: EntityId;
+}
+
+export interface ConsumeResourceResult {
+  consumedNutrition: number;
+  depleted: boolean;
+}
+
 export interface CreatureOptions {
   position?: Partial<PositionInput>;
   velocity?: Partial<VelocityInput>;
@@ -144,6 +177,7 @@ export interface FoodOptions {
   position?: Partial<PositionInput>;
   body?: Partial<BodyInput>;
   energy?: Partial<DecayingVitalInput>;
+  resource?: Partial<ResourceInput>;
 }
 
 const DEFAULT_POSITION: PositionInput = {
@@ -191,6 +225,14 @@ const DEFAULT_FOOD_ENERGY: DecayingVitalInput = {
   decay_rate: 0,
 };
 
+const DEFAULT_FOOD_RESOURCE: ResourceInput = {
+  current: 25,
+  max: 25,
+  nutrition: 25,
+  regrow_ticks: 120,
+  regrow_remaining: 0,
+};
+
 export function createSimulationWorld(options: SimulationWorldOptions = {}): SimulationWorld {
   const components = createCoreComponents();
   const world = createWorld<{ components: CoreComponents; sim: SimulationMetadata }>({
@@ -225,16 +267,63 @@ export function createCreature(world: SimulationWorld, options: CreatureOptions 
 export function createFood(world: SimulationWorld, options: FoodOptions = {}): EntityId {
   const components = getCoreComponents(world);
   const eid = addEntity(world);
+  const resource = normalizeResourceInput(options);
 
   addComponent(world, eid, components.Position);
   addComponent(world, eid, components.Body);
   addComponent(world, eid, components.Energy);
+  addComponent(world, eid, components.Resource);
 
   writePosition(components.Position, eid, { ...DEFAULT_POSITION, ...options.position });
   writeBody(components.Body, eid, { ...DEFAULT_FOOD_BODY, ...options.body });
-  writeDecayingVital(components.Energy, eid, { ...DEFAULT_FOOD_ENERGY, ...options.energy });
+  writeDecayingVital(components.Energy, eid, {
+    ...DEFAULT_FOOD_ENERGY,
+    current: resource.current,
+    max: resource.max,
+    decay_rate: options.energy?.decay_rate ?? DEFAULT_FOOD_ENERGY.decay_rate,
+  });
+  writeResource(components.Resource, eid, resource);
 
   return eid;
+}
+
+export function consumeResource(
+  world: SimulationWorld,
+  { consumer, resource }: ConsumeResourceOptions,
+): ConsumeResourceResult {
+  const components = getCoreComponents(world);
+
+  if (
+    !hasComponent(world, resource, components.Resource) ||
+    (components.Resource.current[resource] ?? 0) <= 0
+  ) {
+    return {
+      consumedNutrition: 0,
+      depleted: false,
+    };
+  }
+
+  const consumedNutrition = components.Resource.nutrition[resource] ?? 0;
+
+  if (hasComponent(world, consumer, components.Hunger)) {
+    components.Hunger.current[consumer] = clamp(
+      (components.Hunger.current[consumer] ?? 0) - consumedNutrition,
+      0,
+      components.Hunger.max[consumer] ?? 0,
+    );
+  }
+
+  components.Resource.current[resource] = 0;
+  components.Resource.regrow_remaining[resource] = components.Resource.regrow_ticks[resource] ?? 0;
+
+  if (hasComponent(world, resource, components.Energy)) {
+    components.Energy.current[resource] = 0;
+  }
+
+  return {
+    consumedNutrition,
+    depleted: true,
+  };
 }
 
 export function destroyEntity(world: SimulationWorld, eid: EntityId): void {
@@ -269,4 +358,38 @@ function writeDecayingVital(
 ): void {
   writeVital(component, eid, vital);
   component.decay_rate[eid] = vital.decay_rate;
+}
+
+function writeResource(component: ResourceComponent, eid: EntityId, resource: ResourceInput): void {
+  writeVital(component, eid, resource);
+  component.nutrition[eid] = resource.nutrition;
+  component.regrow_ticks[eid] = resource.regrow_ticks;
+  component.regrow_remaining[eid] = resource.regrow_remaining;
+}
+
+function normalizeResourceInput(options: FoodOptions): ResourceInput {
+  const nutrition =
+    options.resource?.nutrition ?? options.energy?.current ?? DEFAULT_FOOD_RESOURCE.nutrition;
+  const max = options.resource?.max ?? options.energy?.max ?? nutrition;
+  const current = options.resource?.current ?? options.energy?.current ?? max;
+
+  return {
+    ...DEFAULT_FOOD_RESOURCE,
+    current,
+    max,
+    nutrition,
+    ...options.resource,
+  };
+}
+
+function clamp(value: number, min: number, max: number): number {
+  if (value < min) {
+    return min;
+  }
+
+  if (value > max) {
+    return max;
+  }
+
+  return value;
 }

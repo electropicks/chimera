@@ -48,9 +48,9 @@ describe("core components", () => {
     expect(Energy.decay_rate[creature]).toBe(0.5);
   });
 
-  test("creates food with position, body, and energy only", () => {
+  test("creates food with position, body, energy, and resource state", () => {
     const world = createSimulationWorld();
-    const { Body, Energy, Health, Hunger, Position, Velocity } = getCoreComponents(world);
+    const { Body, Energy, Health, Hunger, Position, Resource, Velocity } = getCoreComponents(world);
 
     const food = createFood(world, {
       position: { x: -3, y: 7 },
@@ -60,6 +60,7 @@ describe("core components", () => {
     expect(hasComponent(world, food, Position)).toBe(true);
     expect(hasComponent(world, food, Body)).toBe(true);
     expect(hasComponent(world, food, Energy)).toBe(true);
+    expect(hasComponent(world, food, Resource)).toBe(true);
     expect(hasComponent(world, food, Velocity)).toBe(false);
     expect(hasComponent(world, food, Health)).toBe(false);
     expect(hasComponent(world, food, Hunger)).toBe(false);
@@ -68,6 +69,9 @@ describe("core components", () => {
     expect(Body.speed[food]).toBe(0);
     expect(Energy.current[food]).toBe(15);
     expect(Energy.max[food]).toBe(20);
+    expect(Resource.current[food]).toBe(15);
+    expect(Resource.max[food]).toBe(20);
+    expect(Resource.nutrition[food]).toBe(15);
   });
 
   test("allows component data to be read and written by entity id", () => {

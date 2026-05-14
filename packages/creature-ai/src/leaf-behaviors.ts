@@ -1,4 +1,5 @@
 import {
+  consumeResource,
   createCreature,
   createFood,
   createSimulationWorld,
@@ -149,6 +150,7 @@ function cloneWorld(source: SimulationWorld): CloneResult {
     bounds: snapshot.bounds,
     obstacles: snapshot.obstacles,
     devAssertions: source.sim.devAssertions,
+    resources: snapshot.resources,
     seed: snapshot.seed,
     worldSeed: snapshot.worldSeed,
   });
@@ -159,6 +161,7 @@ function cloneWorld(source: SimulationWorld): CloneResult {
   world.sim.tick = snapshot.tick;
   world.sim.events = snapshot.events.map((event) => ({ ...event }));
   world.sim.lastSystemOrder = [...snapshot.lastSystemOrder];
+  world.sim.resourceSpawnCursor = snapshot.resourceSpawnCursor;
 
   for (const entity of snapshot.entities) {
     while (nextEntityId < entity.id) {
@@ -208,6 +211,7 @@ function cloneEntityFromSnapshot(world: SimulationWorld, entity: EntitySnapshot)
       body: entity.body,
       energy: entity.energy,
       position: entity.position,
+      resource: entity.resource,
     });
   }
 
@@ -225,13 +229,7 @@ function requireMappedEntity(clone: CloneResult, entity: EntityId): EntityId {
 }
 
 function eatFood(world: SimulationWorld, entity: EntityId, food: EntityId): void {
-  const components = getCoreComponents(world);
-  const nutrition = components.Energy.current[food] ?? 0;
-  const currentHunger = components.Hunger.current[entity] ?? 0;
-  const maxHunger = components.Hunger.max[entity] ?? 0;
-
-  components.Hunger.current[entity] = clamp(currentHunger - nutrition, 0, maxHunger);
-  destroyEntity(world, food);
+  consumeResource(world, { consumer: entity, resource: food });
 }
 
 function isAdjacent(
@@ -324,16 +322,4 @@ function hashUnit(input: string): number {
 
 function cleanZero(value: number): number {
   return Math.abs(value) < 1e-12 ? 0 : value;
-}
-
-function clamp(value: number, min: number, max: number): number {
-  if (value < min) {
-    return min;
-  }
-
-  if (value > max) {
-    return max;
-  }
-
-  return value;
 }
