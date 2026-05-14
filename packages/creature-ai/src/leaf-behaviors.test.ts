@@ -3,11 +3,12 @@ import {
   createCreature,
   createFood,
   createSimulationWorld,
+  destroyEntity,
   snapshotWorld,
   type WorldSnapshot,
 } from "@creature/sim-core";
 import { describe, expect, test } from "vitest";
-import { flee, forage, rest, wander } from "./leaf-behaviors.ts";
+import { flee, forage, rest, runLeafBehavior, wander } from "./leaf-behaviors.ts";
 
 function entity(snapshot: WorldSnapshot, id: number) {
   const found = snapshot.entities.find((current) => current.id === id);
@@ -117,5 +118,51 @@ describe("leaf behaviors", () => {
 
     expect(fleeingCreature.position).toEqual({ x: 9, y: 10 });
     expect(fleeingCreature.velocity).toEqual({ vx: -1, vy: 0 });
+  });
+
+  test("dispatcher passes decision perception through to flee", () => {
+    const world = createSimulationWorld({ seed: 16 });
+    const creature = createCreature(world, {
+      position: { x: 10, y: 10 },
+      body: { speed: 1, size: 1, sense_radius: 20 },
+    });
+    const perception: Perception = {
+      entity: creature,
+      senseRadius: 20,
+      visibleEntities: [],
+      nearestFood: null,
+      nearestThreat: { entity: 99, distance: 2, direction: { x: 1, y: 0 } },
+      nearestCreature: null,
+      vitals: {
+        hunger: { current: 0, max: 100 },
+        energy: { current: 100, max: 100 },
+        health: { current: 100, max: 100 },
+      },
+      localObstacleDensity: 0,
+    };
+
+    const result = runLeafBehavior(world, creature, "flee", { perception });
+    const fleeingCreature = entity(result.snapshot, result.entity);
+
+    expect(fleeingCreature.position).toEqual({ x: 9, y: 10 });
+    expect(fleeingCreature.velocity).toEqual({ vx: -1, vy: 0 });
+  });
+
+  test("pure behavior clones preserve surviving entity ids after removals", () => {
+    const world = createSimulationWorld({ seed: 17 });
+    const creature = createCreature(world, {
+      position: { x: 10, y: 10 },
+    });
+    const removedFood = createFood(world, { position: { x: 11, y: 10 } });
+    const survivingFood = createFood(world, { position: { x: 20, y: 10 } });
+    destroyEntity(world, removedFood);
+
+    const result = rest(world, creature);
+    const resultIds = result.snapshot.entities.map((current) => current.id);
+
+    expect(result.entity).toBe(creature);
+    expect(resultIds).toContain(creature);
+    expect(resultIds).toContain(survivingFood);
+    expect(resultIds).not.toContain(removedFood);
   });
 });
