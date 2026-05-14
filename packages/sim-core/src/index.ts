@@ -53,6 +53,15 @@ export {
   type SystemName,
   snapshotWorld,
   step,
-  type WorldBounds,
   type WorldSnapshot,
 } from "./tick.ts";
+export {
+  DEFAULT_BOUNDS,
+  type GenerateWorldModelOptions,
+  generateWorldModel,
+  type ResolvedMovement,
+  type ResolveMovementOptions,
+  type WorldBounds,
+  type WorldModel,
+  type WorldObstacle,
+} from "./world-model.ts";

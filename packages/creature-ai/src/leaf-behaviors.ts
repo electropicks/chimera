@@ -147,8 +147,10 @@ function cloneWorld(source: SimulationWorld): CloneResult {
   const snapshot = snapshotWorld(source);
   const world = createSimulationWorld({
     bounds: snapshot.bounds,
+    obstacles: snapshot.obstacles,
     devAssertions: source.sim.devAssertions,
     seed: snapshot.seed,
+    worldSeed: snapshot.worldSeed,
   });
   const entityMap = new Map<EntityId, EntityId>();
   const placeholderEntities: EntityId[] = [];
