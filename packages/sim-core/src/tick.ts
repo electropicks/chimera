@@ -1,11 +1,13 @@
 import { type EntityId, getAllEntities, hasComponent, query } from "bitecs";
 
 import {
+  createFood,
   type DecayingVitalComponent,
   getCoreComponents,
   type SimulationWorld,
   type VelocityInput,
 } from "./components.ts";
+import { createRng } from "./rng.ts";
 import {
   isPointInsideObstacle,
   normalizeWorldBounds,
@@ -57,6 +59,8 @@ export interface SimulationMetadata {
   worldSeed: number;
   bounds: WorldBounds;
   obstacles: WorldObstacle[];
+  resources: ResourceSystemConfig | null;
+  resourceSpawnCursor: number;
   devAssertions: boolean;
   lastSystemOrder: SystemName[];
   events: SimEvent[];
@@ -71,7 +75,16 @@ export interface SimulationWorldOptions {
   bounds?: Partial<WorldBounds>;
   worldSeed?: number;
   obstacles?: readonly WorldObstacle[];
+  resources?: Partial<ResourceSystemConfig> | null;
   devAssertions?: boolean;
+}
+
+export interface ResourceSystemConfig {
+  targetFoodCount: number;
+  maxFoodCount: number;
+  spawnBatchSize: number;
+  foodNutrition: number;
+  regrowTicks: number;
 }
 
 export interface WorldSnapshot {
@@ -80,6 +93,8 @@ export interface WorldSnapshot {
   worldSeed: number;
   bounds: WorldBounds;
   obstacles: WorldObstacle[];
+  resources: ResourceSystemConfig | null;
+  resourceSpawnCursor: number;
   entities: EntitySnapshot[];
   events: SimEvent[];
   lastSystemOrder: SystemName[];
@@ -111,6 +126,13 @@ export interface EntitySnapshot {
     max: number;
     decay_rate: number;
   };
+  resource?: {
+    current: number;
+    max: number;
+    nutrition: number;
+    regrow_ticks: number;
+    regrow_remaining: number;
+  };
 }
 
 export function createSimulationMetadata(options: SimulationWorldOptions = {}): SimulationMetadata {
@@ -122,6 +144,8 @@ export function createSimulationMetadata(options: SimulationWorldOptions = {}): 
     worldSeed: options.worldSeed ?? 0,
     bounds,
     obstacles: normalizeWorldObstacles(options.obstacles, bounds),
+    resources: normalizeResourceSystemConfig(options.resources),
+    resourceSpawnCursor: 0,
     devAssertions: options.devAssertions ?? true,
     lastSystemOrder: [],
     events: [],
@@ -163,6 +187,8 @@ export function snapshotWorld(world: SimulationWorld): WorldSnapshot {
     worldSeed: world.sim.worldSeed,
     bounds: { ...world.sim.bounds },
     obstacles: world.sim.obstacles.map((obstacle) => ({ ...obstacle })),
+    resources: world.sim.resources ? { ...world.sim.resources } : null,
+    resourceSpawnCursor: world.sim.resourceSpawnCursor,
     entities: entityIds.map((eid) => snapshotEntity(world, eid)),
     events: world.sim.events.map((event) => ({ ...event })),
     lastSystemOrder: [...world.sim.lastSystemOrder],
@@ -216,6 +242,16 @@ export function snapshotWorld(world: SimulationWorld): WorldSnapshot {
       };
     }
 
+    if (hasComponent(currentWorld, eid, components.Resource)) {
+      entity.resource = {
+        current: components.Resource.current[eid] ?? 0,
+        max: components.Resource.max[eid] ?? 0,
+        nutrition: components.Resource.nutrition[eid] ?? 0,
+        regrow_ticks: components.Resource.regrow_ticks[eid] ?? 0,
+        regrow_remaining: components.Resource.regrow_remaining[eid] ?? 0,
+      };
+    }
+
     return entity;
   }
 }
@@ -240,9 +276,7 @@ function runPerceptionSystem(world: SimulationWorld): void {
       components.Hunger,
       components.Energy,
     ]).length,
-    foodCount: query(world, [components.Position, components.Body, components.Energy]).filter(
-      (eid) => !hasComponent(world, eid, components.Velocity),
-    ).length,
+    foodCount: activeFoodResourceIds(world).length,
   };
 }
 
@@ -339,6 +373,8 @@ function runNeedsDecaySystem(world: SimulationWorld): void {
       eid,
     );
   }
+
+  runResourceSystem(world);
 }
 
 function runEventsSystem(world: SimulationWorld): void {
@@ -420,4 +456,134 @@ function clamp(value: number, min: number, max: number): number {
 
 function clampVital(value: number, component: DecayingVitalComponent, eid: EntityId): number {
   return clamp(value, 0, component.max[eid] ?? 0);
+}
+
+function runResourceSystem(world: SimulationWorld): void {
+  const components = getCoreComponents(world);
+
+  for (const eid of query(world, [components.Resource])) {
+    if ((components.Resource.current[eid] ?? 0) > 0) {
+      continue;
+    }
+
+    const nextRemaining = Math.max((components.Resource.regrow_remaining[eid] ?? 0) - 1, 0);
+    components.Resource.regrow_remaining[eid] = nextRemaining;
+
+    if (nextRemaining === 0) {
+      components.Resource.current[eid] = components.Resource.max[eid] ?? 0;
+
+      if (hasComponent(world, eid, components.Energy)) {
+        components.Energy.current[eid] = components.Energy.max[eid] ?? 0;
+      }
+    }
+  }
+
+  maintainResourceDensity(world);
+}
+
+function maintainResourceDensity(world: SimulationWorld): void {
+  const config = world.sim.resources;
+
+  if (!config) {
+    return;
+  }
+
+  const totalFoodCount = foodResourceIds(world).length;
+  const activeFoodCount = activeFoodResourceIds(world).length;
+  const neededFoodCount = Math.min(
+    config.spawnBatchSize,
+    config.targetFoodCount - activeFoodCount,
+    config.maxFoodCount - totalFoodCount,
+  );
+
+  if (neededFoodCount <= 0) {
+    return;
+  }
+
+  for (let index = 0; index < neededFoodCount; index += 1) {
+    const position = nextResourceSpawnPosition(world);
+
+    createFood(world, {
+      position,
+      resource: {
+        current: config.foodNutrition,
+        max: config.foodNutrition,
+        nutrition: config.foodNutrition,
+        regrow_ticks: config.regrowTicks,
+        regrow_remaining: 0,
+      },
+    });
+  }
+}
+
+function foodResourceIds(world: SimulationWorld): EntityId[] {
+  const components = getCoreComponents(world);
+
+  return Array.from(
+    query(world, [components.Position, components.Body, components.Energy, components.Resource]),
+  ).filter(
+    (eid) =>
+      !hasComponent(world, eid, components.Velocity) &&
+      !hasComponent(world, eid, components.Health) &&
+      !hasComponent(world, eid, components.Hunger),
+  );
+}
+
+function activeFoodResourceIds(world: SimulationWorld): EntityId[] {
+  const components = getCoreComponents(world);
+
+  return foodResourceIds(world).filter((eid) => (components.Resource.current[eid] ?? 0) > 0);
+}
+
+function nextResourceSpawnPosition(world: SimulationWorld): { x: number; y: number } {
+  const spawnSeed = hashNumbers(world.sim.worldSeed, world.sim.resourceSpawnCursor);
+  const rng = createRng(spawnSeed);
+
+  world.sim.resourceSpawnCursor += 1;
+
+  for (let attempt = 0; attempt < 32; attempt += 1) {
+    const position = {
+      x: rng.range(world.sim.bounds.minX, world.sim.bounds.maxX),
+      y: rng.range(world.sim.bounds.minY, world.sim.bounds.maxY),
+    };
+
+    if (!world.sim.obstacles.some((obstacle) => isPointInsideObstacle(position, obstacle))) {
+      return position;
+    }
+  }
+
+  return {
+    x: (world.sim.bounds.minX + world.sim.bounds.maxX) / 2,
+    y: (world.sim.bounds.minY + world.sim.bounds.maxY) / 2,
+  };
+}
+
+function normalizeResourceSystemConfig(
+  config: Partial<ResourceSystemConfig> | null | undefined,
+): ResourceSystemConfig | null {
+  if (!config) {
+    return null;
+  }
+
+  const targetFoodCount = config.targetFoodCount ?? 0;
+  const maxFoodCount = Math.max(config.maxFoodCount ?? targetFoodCount * 2, targetFoodCount);
+
+  return {
+    targetFoodCount,
+    maxFoodCount,
+    spawnBatchSize: config.spawnBatchSize ?? Math.max(1, targetFoodCount),
+    foodNutrition: config.foodNutrition ?? 25,
+    regrowTicks: config.regrowTicks ?? 120,
+  };
+}
+
+function hashNumbers(...values: readonly number[]): number {
+  let hash = 2166136261;
+
+  for (const value of values) {
+    hash ^= value >>> 0;
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return hash >>> 0;
 }

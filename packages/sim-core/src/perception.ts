@@ -175,6 +175,13 @@ function classifyPerceivedEntity(
   }
 
   if (!hasVelocity && !hasHealth && !hasHunger) {
+    if (
+      hasComponent(world, entityId, components.Resource) &&
+      (components.Resource.current[entityId] ?? 0) <= 0
+    ) {
+      return null;
+    }
+
     return "food";
   }
 

@@ -226,7 +226,12 @@ function toCreatureView(entity: EntitySnapshot): CreaturePocEntityView {
 
 function isFoodSnapshot(entity: EntitySnapshot): boolean {
   return Boolean(
-    entity.position && entity.energy && !entity.velocity && !entity.health && !entity.hunger,
+    entity.position &&
+      entity.energy &&
+      (!entity.resource || entity.resource.current > 0) &&
+      !entity.velocity &&
+      !entity.health &&
+      !entity.hunger,
   );
 }
 

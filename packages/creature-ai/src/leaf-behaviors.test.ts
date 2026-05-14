@@ -39,7 +39,7 @@ describe("leaf behaviors", () => {
     expect(movedCreature.velocity).toEqual({ vx: 1, vy: 0 });
   });
 
-  test("foraging creature eats adjacent food within one behavior tick", () => {
+  test("foraging creature depletes adjacent food within one behavior tick", () => {
     const world = createSimulationWorld({ seed: 12 });
     const creature = createCreature(world, {
       position: { x: 10, y: 10 },
@@ -53,9 +53,10 @@ describe("leaf behaviors", () => {
 
     const result = forage(world, creature);
     const fedCreature = entity(result.snapshot, result.entity);
+    const depletedFood = entity(result.snapshot, food);
 
     expect(snapshotWorld(world).entities.some((current) => current.id === food)).toBe(true);
-    expect(result.snapshot.entities.some((current) => current.id === food)).toBe(false);
+    expect(depletedFood.resource?.current).toBe(0);
     expect(fedCreature.hunger?.current).toBe(6);
   });
 

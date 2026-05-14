@@ -76,7 +76,7 @@ describe("step", () => {
 
     expect(secondSnapshot).toBe(firstSnapshot);
     expect(firstSnapshot).toMatchInlineSnapshot(
-      `"{"tick":100,"seed":42,"worldSeed":0,"bounds":{"minX":-5,"minY":-5,"maxX":5,"maxY":5},"obstacles":[],"entities":[{"id":1,"position":{"x":-2,"y":1},"velocity":{"vx":0,"vy":-0.25},"body":{"speed":1.25,"size":1,"sense_radius":6},"health":{"current":90,"max":100},"hunger":{"current":13.5,"max":100,"decay_rate":0.125},"energy":{"current":55,"max":100,"decay_rate":0.25}},{"id":2,"position":{"x":3,"y":-1},"body":{"speed":0,"size":0.5,"sense_radius":0},"energy":{"current":15,"max":15,"decay_rate":0}}],"events":[{"type":"tick_completed","tick":100,"systems":["perception","decision","action","physics","needs_decay","events"]}],"lastSystemOrder":["perception","decision","action","physics","needs_decay","events"]}"`,
+      `"{"tick":100,"seed":42,"worldSeed":0,"bounds":{"minX":-5,"minY":-5,"maxX":5,"maxY":5},"obstacles":[],"resources":null,"resourceSpawnCursor":0,"entities":[{"id":1,"position":{"x":-2,"y":1},"velocity":{"vx":0,"vy":-0.25},"body":{"speed":1.25,"size":1,"sense_radius":6},"health":{"current":90,"max":100},"hunger":{"current":13.5,"max":100,"decay_rate":0.125},"energy":{"current":55,"max":100,"decay_rate":0.25}},{"id":2,"position":{"x":3,"y":-1},"body":{"speed":0,"size":0.5,"sense_radius":0},"energy":{"current":15,"max":15,"decay_rate":0},"resource":{"current":15,"max":15,"nutrition":15,"regrow_ticks":120,"regrow_remaining":0}}],"events":[{"type":"tick_completed","tick":100,"systems":["perception","decision","action","physics","needs_decay","events"]}],"lastSystemOrder":["perception","decision","action","physics","needs_decay","events"]}"`,
     );
   });
 });
