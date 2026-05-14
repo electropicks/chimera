@@ -6,6 +6,14 @@ import {
   type SimulationWorld,
   type VelocityInput,
 } from "./components.ts";
+import {
+  isPointInsideObstacle,
+  normalizeWorldBounds,
+  normalizeWorldObstacles,
+  resolveMovement,
+  type WorldBounds,
+  type WorldObstacle,
+} from "./world-model.ts";
 
 export const SYSTEM_ORDER = [
   "perception",
@@ -17,13 +25,6 @@ export const SYSTEM_ORDER = [
 ] as const;
 
 export type SystemName = (typeof SYSTEM_ORDER)[number];
-
-export interface WorldBounds {
-  minX: number;
-  minY: number;
-  maxX: number;
-  maxY: number;
-}
 
 export type Intervention =
   | {
@@ -53,7 +54,9 @@ export type SimEvent =
 export interface SimulationMetadata {
   tick: number;
   seed: number;
+  worldSeed: number;
   bounds: WorldBounds;
+  obstacles: WorldObstacle[];
   devAssertions: boolean;
   lastSystemOrder: SystemName[];
   events: SimEvent[];
@@ -66,13 +69,17 @@ export interface SimulationMetadata {
 export interface SimulationWorldOptions {
   seed?: number;
   bounds?: Partial<WorldBounds>;
+  worldSeed?: number;
+  obstacles?: readonly WorldObstacle[];
   devAssertions?: boolean;
 }
 
 export interface WorldSnapshot {
   tick: number;
   seed: number;
+  worldSeed: number;
   bounds: WorldBounds;
+  obstacles: WorldObstacle[];
   entities: EntitySnapshot[];
   events: SimEvent[];
   lastSystemOrder: SystemName[];
@@ -106,21 +113,15 @@ export interface EntitySnapshot {
   };
 }
 
-const DEFAULT_BOUNDS: WorldBounds = {
-  minX: 0,
-  minY: 0,
-  maxX: 100,
-  maxY: 100,
-};
-
 export function createSimulationMetadata(options: SimulationWorldOptions = {}): SimulationMetadata {
+  const bounds = normalizeWorldBounds(options.bounds);
+
   return {
     tick: 0,
     seed: options.seed ?? 0,
-    bounds: {
-      ...DEFAULT_BOUNDS,
-      ...options.bounds,
-    },
+    worldSeed: options.worldSeed ?? 0,
+    bounds,
+    obstacles: normalizeWorldObstacles(options.obstacles, bounds),
     devAssertions: options.devAssertions ?? true,
     lastSystemOrder: [],
     events: [],
@@ -159,7 +160,9 @@ export function snapshotWorld(world: SimulationWorld): WorldSnapshot {
   return {
     tick: world.sim.tick,
     seed: world.sim.seed,
+    worldSeed: world.sim.worldSeed,
     bounds: { ...world.sim.bounds },
+    obstacles: world.sim.obstacles.map((obstacle) => ({ ...obstacle })),
     entities: entityIds.map((eid) => snapshotEntity(world, eid)),
     events: world.sim.events.map((event) => ({ ...event })),
     lastSystemOrder: [...world.sim.lastSystemOrder],
@@ -295,16 +298,26 @@ function runPhysicsSystem(world: SimulationWorld): void {
   const components = getCoreComponents(world);
 
   for (const eid of query(world, [components.Position, components.Velocity])) {
-    components.Position.x[eid] = clamp(
-      (components.Position.x[eid] ?? 0) + (components.Velocity.vx[eid] ?? 0),
-      world.sim.bounds.minX,
-      world.sim.bounds.maxX,
-    );
-    components.Position.y[eid] = clamp(
-      (components.Position.y[eid] ?? 0) + (components.Velocity.vy[eid] ?? 0),
-      world.sim.bounds.minY,
-      world.sim.bounds.maxY,
-    );
+    const resolved = resolveMovement({
+      bounds: world.sim.bounds,
+      obstacles: world.sim.obstacles,
+      position: {
+        x: components.Position.x[eid] ?? 0,
+        y: components.Position.y[eid] ?? 0,
+      },
+      velocity: {
+        vx: components.Velocity.vx[eid] ?? 0,
+        vy: components.Velocity.vy[eid] ?? 0,
+      },
+    });
+
+    components.Position.x[eid] = resolved.position.x;
+    components.Position.y[eid] = resolved.position.y;
+
+    if (resolved.collided) {
+      components.Velocity.vx[eid] = 0;
+      components.Velocity.vy[eid] = 0;
+    }
   }
 }
 
@@ -375,6 +388,20 @@ function assertWorldInvariants(world: SimulationWorld, previousTick: number): vo
       y > world.sim.bounds.maxY
     ) {
       throw new Error(`entity ${eid} position must stay inside world bounds`);
+    }
+
+    if (
+      world.sim.obstacles.some((obstacle) =>
+        isPointInsideObstacle(
+          {
+            x,
+            y,
+          },
+          obstacle,
+        ),
+      )
+    ) {
+      throw new Error(`entity ${eid} position must stay outside world obstacles`);
     }
   }
 }
