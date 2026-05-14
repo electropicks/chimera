@@ -57,7 +57,14 @@ importers:
         specifier: workspace:*
         version: link:../sim-core
 
-  packages/renderer: {}
+  packages/renderer:
+    dependencies:
+      '@creature/sim-core':
+        specifier: workspace:*
+        version: link:../sim-core
+      pixi.js:
+        specifier: ^8.18.1
+        version: 8.18.1
 
   packages/sim-core:
     dependencies:
