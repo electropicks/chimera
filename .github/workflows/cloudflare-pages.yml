@@ -69,7 +69,7 @@ jobs:
           script: |
             const marker = "<!-- chimera-cloudflare-pages-preview -->";
             const deploymentUrl = process.env.DEPLOYMENT_URL;
-            const body = `${marker}\n## Cloudflare Pages preview\n\n${deploymentUrl ? `Preview URL: ${deploymentUrl}` : "Preview deployment completed, but Wrangler did not return a deployment URL."}\n\nProject: \`${process.env.CLOUDFLARE_PROJECT_NAME}\``;
+            const body = `${marker}\n## Cloudflare Pages preview\n\n${deploymentUrl ? `Preview URL: ${deploymentUrl}` : "Preview deployment completed, but Wrangler did not return a deployment URL."}\n\nProject identifier: \`${process.env.CLOUDFLARE_PROJECT_NAME}\``;
             const { owner, repo } = context.repo;
             const issue_number = context.issue.number;
             const comments = await github.paginate(
