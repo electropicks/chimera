@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 
 import {
   applyCameraInput,
+  applyCameraTransformToLayer,
   createSnapshotRenderer,
   deriveSpriteModels,
   getCameraTransform,
@@ -131,9 +132,34 @@ describe("camera", () => {
       viewport: { width: 200, height: 100 },
     });
     expect(panned.scale).toBeGreaterThan(followed.scale);
-    expect(panned.offset.x).toBeGreaterThan(followed.offset.x);
-    expect(panned.offset.y).toBe(2.5);
+    expect(panned.offset).toEqual({ x: 57, y: 27.5 });
     expect(panned.followEntityId).toBeUndefined();
+
+    const expectedSmoothTransform = getCameraTransform(snapshot, {
+      followEntityId: 1,
+      offset: { x: 7, y: 2.5 },
+      scale: panned.scale,
+      viewport: followed.viewport,
+    });
+    expect(getCameraTransform(snapshot, panned).translation).toEqual(
+      expectedSmoothTransform.translation,
+    );
+  });
+
+  test("resets the layer transform when camera state is unavailable", () => {
+    const snapshot = snapshotWithEntities([creature(1, 50, 25)]);
+    const layer = new MockCameraLayer();
+
+    applyCameraTransformToLayer(layer, snapshot, {
+      followEntityId: 1,
+      offset: { x: 4, y: -2 },
+      scale: 2,
+      viewport: { width: 200, height: 100 },
+    });
+    applyCameraTransformToLayer(layer, snapshot);
+
+    expect(layer.scaleValue).toBe(1);
+    expect(layer.positionValue).toEqual({ x: 0, y: 0 });
   });
 });
 
@@ -199,6 +225,23 @@ class MockGraphic implements RenderGraphic {
   destroy(): void {
     this.destroyed = true;
   }
+}
+
+class MockCameraLayer {
+  positionValue = { x: 0, y: 0 };
+  scaleValue = 1;
+
+  readonly position = {
+    set: (x: number, y: number) => {
+      this.positionValue = { x, y };
+    },
+  };
+
+  readonly scale = {
+    set: (value: number) => {
+      this.scaleValue = value;
+    },
+  };
 }
 
 function creature(id: number, x: number, y: number): WorldSnapshot["entities"][number] {

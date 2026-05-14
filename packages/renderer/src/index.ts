@@ -90,6 +90,15 @@ export interface PixiSnapshotRenderer {
   renderer: SnapshotRenderer;
 }
 
+export interface CameraLayerTransformTarget {
+  position: {
+    set(x: number, y: number): void;
+  };
+  scale: {
+    set(value: number): void;
+  };
+}
+
 const CREATURE_COLOR = 0x5eead4;
 const FOOD_COLOR = 0x22c55e;
 const THREAT_COLOR = 0xef4444;
@@ -176,7 +185,7 @@ export function getCameraTransform(snapshot: WorldSnapshot, state: CameraState):
   };
 }
 
-export function applyCameraInput(state: CameraState, input: CameraInput): CameraState {
+export function applyCameraInput(state: CameraTransform, input: CameraInput): CameraState {
   let offsetX = state.offset.x;
   let offsetY = state.offset.y;
   let scale = state.scale;
@@ -212,12 +221,32 @@ export function applyCameraInput(state: CameraState, input: CameraInput): Camera
     scale = clamp(scale * input.pinchScale, MIN_CAMERA_SCALE, MAX_CAMERA_SCALE);
   }
 
+  const manualOffset = hasManualMovement
+    ? offsetFromManualMovement(state, offsetX, offsetY)
+    : { x: offsetX, y: offsetY };
+
   return {
     followEntityId: hasManualMovement ? undefined : state.followEntityId,
-    offset: { x: offsetX, y: offsetY },
+    offset: manualOffset,
     scale,
     viewport: state.viewport,
   };
+}
+
+export function applyCameraTransformToLayer(
+  layer: CameraLayerTransformTarget,
+  snapshot: WorldSnapshot,
+  camera?: CameraState,
+): void {
+  if (!camera) {
+    layer.scale.set(1);
+    layer.position.set(0, 0);
+    return;
+  }
+
+  const transform = getCameraTransform(snapshot, camera);
+  layer.scale.set(transform.scale);
+  layer.position.set(transform.translation.x, transform.translation.y);
 }
 
 export async function createPixiSnapshotRenderer(
@@ -259,13 +288,25 @@ export async function createPixiSnapshotRenderer(
     render(snapshot, camera) {
       renderer.update(snapshot);
 
-      if (camera) {
-        const transform = getCameraTransform(snapshot, camera);
-        worldLayer.scale.set(transform.scale);
-        worldLayer.position.set(transform.translation.x, transform.translation.y);
-      }
+      applyCameraTransformToLayer(worldLayer, snapshot, camera);
     },
     renderer,
+  };
+}
+
+function offsetFromManualMovement(
+  state: CameraTransform,
+  offsetX: number,
+  offsetY: number,
+): CameraState["offset"] {
+  const currentWorldCenter = {
+    x: (state.viewport.width / 2 - state.translation.x) / state.scale,
+    y: (state.viewport.height / 2 - state.translation.y) / state.scale,
+  };
+
+  return {
+    x: currentWorldCenter.x + (offsetX - state.offset.x),
+    y: currentWorldCenter.y + (offsetY - state.offset.y),
   };
 }
 
