@@ -35,6 +35,7 @@ export {
 export {
   type Direction,
   PERCEPTION_FEATURE_ORDER,
+  PERCEPTION_FEATURE_VECTOR_LENGTH,
   PERCEPTION_FEATURE_VERSION,
   type PerceivedEntity,
   type PerceivedEntityKind,

@@ -1,6 +1,7 @@
 import { type EntityId, entityExists, getAllEntities, hasComponent } from "bitecs";
 
 import { getCoreComponents, type SimulationWorld } from "./components.ts";
+import { isPointInsideObstacle } from "./world-model.ts";
 
 export const PERCEPTION_FEATURE_VERSION = 1;
 
@@ -23,7 +24,11 @@ export const PERCEPTION_FEATURE_ORDER = [
   "local_obstacle_density",
 ] as const;
 
+export const PERCEPTION_FEATURE_VECTOR_LENGTH = PERCEPTION_FEATURE_ORDER.length;
+
 export type PerceptionFeatureName = (typeof PERCEPTION_FEATURE_ORDER)[number];
+
+const OBSTACLE_DENSITY_GRID_RADIUS = 2;
 
 export interface Direction {
   x: number;
@@ -131,7 +136,11 @@ export function perceive(world: SimulationWorld, entityId: EntityId): Perception
       energy: readVital(components.Energy, entityId),
       health: readVital(components.Health, entityId),
     },
-    localObstacleDensity: 0,
+    localObstacleDensity: localObstacleDensity(world, {
+      x: observerX,
+      y: observerY,
+      senseRadius,
+    }),
   };
 }
 
@@ -282,6 +291,53 @@ function normalizeDistance(distance: number, senseRadius: number): number {
   }
 
   return clamp01(distance / senseRadius);
+}
+
+function localObstacleDensity(
+  world: SimulationWorld,
+  observer: { x: number; y: number; senseRadius: number },
+): number {
+  if (observer.senseRadius <= 0 || world.sim.obstacles.length === 0) {
+    return 0;
+  }
+
+  let blockedSamples = 0;
+  let totalSamples = 0;
+
+  for (
+    let xIndex = -OBSTACLE_DENSITY_GRID_RADIUS;
+    xIndex <= OBSTACLE_DENSITY_GRID_RADIUS;
+    xIndex += 1
+  ) {
+    for (
+      let yIndex = -OBSTACLE_DENSITY_GRID_RADIUS;
+      yIndex <= OBSTACLE_DENSITY_GRID_RADIUS;
+      yIndex += 1
+    ) {
+      const offsetX = (observer.senseRadius * xIndex) / OBSTACLE_DENSITY_GRID_RADIUS;
+      const offsetY = (observer.senseRadius * yIndex) / OBSTACLE_DENSITY_GRID_RADIUS;
+
+      if (offsetX * offsetX + offsetY * offsetY > observer.senseRadius * observer.senseRadius) {
+        continue;
+      }
+
+      totalSamples += 1;
+
+      if (
+        world.sim.obstacles.some((obstacle) =>
+          isPointInsideObstacle({ x: observer.x + offsetX, y: observer.y + offsetY }, obstacle),
+        )
+      ) {
+        blockedSamples += 1;
+      }
+    }
+  }
+
+  if (totalSamples === 0) {
+    return 0;
+  }
+
+  return blockedSamples / totalSamples;
 }
 
 function clamp01(value: number): number {
