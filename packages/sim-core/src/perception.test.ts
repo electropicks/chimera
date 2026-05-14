@@ -5,6 +5,7 @@ import {
   createFood,
   createSimulationWorld,
   PERCEPTION_FEATURE_ORDER,
+  PERCEPTION_FEATURE_VECTOR_LENGTH,
   PERCEPTION_FEATURE_VERSION,
   perceive,
   perceptionToFeatureVector,
@@ -57,6 +58,24 @@ describe("perceive", () => {
     });
     expect(perception.localObstacleDensity).toBe(0);
     expect(perception.visibleEntities.some((entity) => entity.entity === farFood)).toBe(false);
+  });
+
+  test("reports normalized local obstacle density from world obstacles", () => {
+    const world = createSimulationWorld({
+      bounds: { minX: -20, minY: -20, maxX: 20, maxY: 20 },
+      obstacles: [{ id: "blocked-area", minX: -6, minY: -6, maxX: 6, maxY: 6 }],
+    });
+    const observer = createCreature(world, {
+      position: { x: 0, y: 0 },
+      body: { sense_radius: 5 },
+    });
+
+    const perception = perceive(world, observer);
+    const vector = perceptionToFeatureVector(perception);
+    const obstacleDensityIndex = PERCEPTION_FEATURE_ORDER.indexOf("local_obstacle_density");
+
+    expect(perception.localObstacleDensity).toBe(1);
+    expect(vector[obstacleDensityIndex]).toBe(1);
   });
 
   test("uses entity id order to break equal-distance ties deterministically", () => {
@@ -120,7 +139,9 @@ describe("perceptionToFeatureVector", () => {
       "local_obstacle_density",
     ]);
     expect(vector).toBeInstanceOf(Float32Array);
+    expect(PERCEPTION_FEATURE_VECTOR_LENGTH).toBe(PERCEPTION_FEATURE_ORDER.length);
     expect(vector).toHaveLength(PERCEPTION_FEATURE_ORDER.length);
+    expect(vector).toHaveLength(PERCEPTION_FEATURE_VECTOR_LENGTH);
     expectVectorCloseTo(vector, [0.5, 0.75, 0.25, 1, 1, 0.6, 0.8, 0, 1, 0, 0, 1, 0.5, -1, 0, 0]);
   });
 });
