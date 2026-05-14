@@ -41,6 +41,9 @@ importers:
       '@creature/sim-core':
         specifier: workspace:*
         version: link:../sim-core
+      '@creature/ui':
+        specifier: workspace:*
+        version: link:../ui
       pixi.js:
         specifier: ^8.18.1
         version: 8.18.1

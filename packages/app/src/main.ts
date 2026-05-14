@@ -1,3 +1,9 @@
+import {
+  createStoryLogShell,
+  createTimeControls,
+  resolveTimeControlHotkey,
+  type TimeControlSpeed,
+} from "@creature/ui";
 import { Application, Graphics } from "pixi.js";
 
 import {
@@ -5,6 +11,7 @@ import {
   createCreaturePocSimulation,
   type PocBounds,
 } from "./creature-poc";
+import { getSimulationStepsForFrame } from "./time-controls";
 
 const POC_SEED = 20260513;
 const WORLD_BOUNDS: PocBounds = { width: 100, height: 100 };
@@ -27,6 +34,7 @@ interface Hud {
   food: HTMLElement;
   hunger: HTMLElement;
   hungerBar: HTMLElement;
+  speed: HTMLElement;
   tick: HTMLElement;
 }
 
@@ -64,19 +72,53 @@ async function bootstrap(): Promise<void> {
   });
   const scene = createScene(app);
   const hud = createHud(host);
+  let timeScale: TimeControlSpeed = 1;
+  const timeControls = createTimeControls(host, {
+    onSpeedChange: (speed) => {
+      setTimeScale(speed);
+    },
+    speed: timeScale,
+  });
+  createStoryLogShell(host);
   let snapshot = simulation.snapshot();
   let frame = 0;
 
   render(app, scene, snapshot);
-  updateHud(hud, snapshot);
+  updateHud(hud, snapshot, timeScale);
+
+  const setTimeScale = (speed: TimeControlSpeed): void => {
+    timeScale = speed;
+    timeControls.setSpeed(timeScale);
+    updateHud(hud, snapshot, timeScale);
+  };
+
+  window.addEventListener("keydown", (event) => {
+    const speed = resolveTimeControlHotkey(event.key);
+
+    if (speed === null) {
+      return;
+    }
+
+    event.preventDefault();
+    setTimeScale(speed);
+  });
 
   app.ticker.maxFPS = 60;
   app.ticker.add(() => {
     frame += 1;
 
-    if (frame % SIM_FRAMES_PER_TICK === 0) {
-      snapshot = simulation.step();
-      updateHud(hud, snapshot);
+    const simulationSteps = getSimulationStepsForFrame({
+      frame,
+      framesPerTick: SIM_FRAMES_PER_TICK,
+      speed: timeScale,
+    });
+
+    if (simulationSteps > 0) {
+      for (let step = 0; step < simulationSteps; step += 1) {
+        snapshot = simulation.step();
+      }
+
+      updateHud(hud, snapshot, timeScale);
     }
 
     render(app, scene, snapshot);
@@ -111,6 +153,7 @@ function createHud(host: HTMLElement): Hud {
   const hunger = createBarMetric(root, "Hunger", "hunger");
   const energy = createBarMetric(root, "Energy", "energy");
   const food = createMetric(root, "Food");
+  const speed = createMetric(root, "Speed");
 
   host.appendChild(root);
 
@@ -121,6 +164,7 @@ function createHud(host: HTMLElement): Hud {
     food: food.value,
     hunger: hunger.value,
     hungerBar: hunger.bar,
+    speed: speed.value,
     tick: tick.value,
   };
 }
@@ -272,12 +316,13 @@ function drawCreature(
     .fill(0x0f172a);
 }
 
-function updateHud(hud: Hud, snapshot: CreaturePocSnapshot): void {
+function updateHud(hud: Hud, snapshot: CreaturePocSnapshot, speed: TimeControlSpeed): void {
   hud.tick.textContent = String(snapshot.tick);
   hud.action.textContent = snapshot.action;
   hud.hunger.textContent = `${Math.round(snapshot.creature.hunger)} / 100`;
   hud.energy.textContent = `${Math.round(snapshot.creature.energy)} / 100`;
   hud.food.textContent = String(snapshot.foods.length);
+  hud.speed.textContent = speed === 0 ? "Paused" : `${speed}x`;
   hud.hungerBar.style.width = `${clamp(snapshot.creature.hunger, 0, 100)}%`;
   hud.energyBar.style.width = `${clamp(snapshot.creature.energy, 0, 100)}%`;
 }
